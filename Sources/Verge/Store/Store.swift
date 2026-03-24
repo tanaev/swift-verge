@@ -252,9 +252,10 @@ open class Store<State, Activity: Sendable>: EventEmitter<_StoreEvent<State, Act
   }
 
   final func invalidate() {
-    guard
-      wasInvalidated.withLock { v -> Bool in if !v { v = true; return true } else { return false } }
-    else {
+    let didInvalidate: Bool = wasInvalidated.withLock { v in
+      if !v { v = true; return true } else { return false }
+    }
+    guard didInvalidate else {
       // already invalidated
       return
     }
