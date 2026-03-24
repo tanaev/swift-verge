@@ -108,9 +108,7 @@ open class EventEmitter<Event: EventEmitterEventType>: EventEmitterType, @unchec
       $0.append(event)
     }
 
-    if flag.withLock({ v -> Bool in if !v { v = true; return true } else { return false } })
-      .exchanged
-    {
+    if flag.withLock({ v -> Bool in if !v { v = true; return true } else { return false } }) {
 
       while let event: Event = queue.modify({
         if $0.isEmpty == false {
