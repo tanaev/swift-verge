@@ -1,5 +1,4 @@
 import Combine
-import Atomics
 
 /// A typealias to `Set<AnyCancellable>`.
 public typealias VergeAnyCancellables = Set<AnyCancellable>

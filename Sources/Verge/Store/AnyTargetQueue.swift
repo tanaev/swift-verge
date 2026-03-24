@@ -20,7 +20,7 @@
 // THE SOFTWARE.
 
 import Foundation
-import Atomics
+import os
 
 public protocol TargetQueueType {
   func execute(_ workItem: sending @escaping @Sendable () -> Void)
@@ -88,28 +88,30 @@ public struct ImmediateMainActorTargetQueue: Sendable, MainActorTargetQueueType 
   
   public static let shared = Self()
 
-  private let numberEnqueued = ManagedAtomic<UInt64>.init(0)
-  
+  private let numberEnqueued = OSAllocatedUnfairLock(initialState: UInt64(0))
+
   init() {
 
   }
-  
+
   public func execute(_ workItem: @escaping @MainActor () -> Void) {
-          
-    let previousNumberEnqueued = numberEnqueued.loadThenWrappingIncrement(ordering: .sequentiallyConsistent)
-    
+
+    let previousNumberEnqueued = numberEnqueued.withLock { v -> UInt64 in
+      let prev = v; v &+= 1; return prev
+    }
+
     if Thread.isMainThread && previousNumberEnqueued == 0 {
       MainActor.assumeIsolated {
         workItem()
       }
-      numberEnqueued.wrappingDecrement(ordering: .sequentiallyConsistent)
+      numberEnqueued.withLock { $0 &-= 1 }
     } else {
       DispatchQueue.main.async {
         workItem()
-        self.numberEnqueued.wrappingDecrement(ordering: .sequentiallyConsistent)
+        self.numberEnqueued.withLock { $0 &-= 1 }
       }
     }
-    
+
   }
   
 }
@@ -157,13 +159,13 @@ extension TargetQueueType where Self == AnyTargetQueue {
   /// Enqueue first item on current-thread(synchronously).
   /// From then, using specified queue.
   public static func startsFromCurrentThread(andUse queue: some TargetQueueType) -> AnyTargetQueue {
-    let numberEnqueued = ManagedAtomic<Bool>.init(true)
+    let numberEnqueued = OSAllocatedUnfairLock(initialState: true)
 
     let execute = queue.execute
 
     return .init { workItem in
 
-      let isFirst = numberEnqueued.loadThenLogicalAnd(with: false, ordering: .relaxed)
+      let isFirst = numberEnqueued.withLock { v -> Bool in let was = v; v = false; return was }
 
       if isFirst {
         workItem()

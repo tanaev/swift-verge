@@ -19,7 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import Atomics
 import Combine
 import DequeModule
 import Foundation
@@ -80,7 +79,7 @@ open class EventEmitter<Event: EventEmitterEventType>: EventEmitterType, @unchec
 
   private let queue: VergeConcurrency.UnfairLockAtomic<Deque<Event>> = .init(.init())
 
-  private let flag = ManagedAtomic<Bool>.init(false)
+  private let flag = OSAllocatedUnfairLock(initialState: false)
 
   private var deinitHandlers: VergeConcurrency.UnfairLockAtomic<[() -> Void]> = .init([])
 
@@ -109,7 +108,7 @@ open class EventEmitter<Event: EventEmitterEventType>: EventEmitterType, @unchec
       $0.append(event)
     }
 
-    if flag.compareExchange(expected: false, desired: true, ordering: .sequentiallyConsistent)
+    if flag.withLock({ v -> Bool in if !v { v = true; return true } else { return false } })
       .exchanged
     {
 
@@ -136,7 +135,7 @@ open class EventEmitter<Event: EventEmitterEventType>: EventEmitterType, @unchec
        a conjunction of enqueue and dequeue
        */
 
-      _ = flag.compareExchange(expected: true, desired: false, ordering: .sequentiallyConsistent)
+      flag.withLock { $0 = false }
     } else {
       // enqueue only
     }

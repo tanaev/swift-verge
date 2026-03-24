@@ -20,7 +20,6 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/ReactiveX/RxSwift.git", from: "6.0.0"),
-    .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.2"),
     .package(url: "https://github.com/apple/swift-collections", from: "1.1.0"),
     .package(url: "https://github.com/VergeGroup/swift-concurrency-task-manager", from: "3.0.0"),
     .package(url: "https://github.com/VergeGroup/TypedComparator", from: "1.0.0"),
@@ -53,7 +52,6 @@ let package = Package(
         "VergeMacros",
         .product(name: "StateStruct", package: "swift-macro-state-struct"),
         .product(name: "TypedComparator", package: "TypedComparator"),
-        .product(name: "Atomics", package: "swift-atomics"),
         .product(name: "DequeModule", package: "swift-collections"),
         .product(name: "ConcurrencyTaskManager", package: "swift-concurrency-task-manager"),
       ]

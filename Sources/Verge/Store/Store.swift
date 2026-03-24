@@ -19,9 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import Atomics
 import ConcurrencyTaskManager
 import Foundation
+import os
 import os.log
 import StateStruct
 
@@ -140,7 +140,7 @@ open class Store<State, Activity: Sendable>: EventEmitter<_StoreEvent<State, Act
 
   open var keepsAliveForSubscribers: Bool { false }
 
-  private let wasInvalidated = Atomics.ManagedAtomic(false)
+  private let wasInvalidated = OSAllocatedUnfairLock(initialState: false)
     
   // MARK: - Deinit
 
@@ -253,7 +253,7 @@ open class Store<State, Activity: Sendable>: EventEmitter<_StoreEvent<State, Act
 
   final func invalidate() {
     guard
-      wasInvalidated.compareExchange(expected: false, desired: true, ordering: .relaxed).exchanged
+      wasInvalidated.withLock { v -> Bool in if !v { v = true; return true } else { return false } }
     else {
       // already invalidated
       return

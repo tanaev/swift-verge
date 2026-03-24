@@ -20,14 +20,14 @@
 // THE SOFTWARE.
 
 import Foundation
-import Atomics
+import os
 
 public protocol EdgeType : Equatable {
   associatedtype State
   var wrappedValue: State { get }
 }
 
-private let _edge_global_counter = ManagedAtomic<UInt64>.init(0)
+private let _edge_global_lock = OSAllocatedUnfairLock(initialState: UInt64(0))
 
 /**
  A wrapper structure provides equatability as False-negative.
@@ -99,7 +99,11 @@ public struct Edge<Value>: EdgeType {
     comparer: @escaping @Sendable (Value, Value) -> Bool = { @Sendable _, _ in false }
   ) {
     
-    self.globalID = _edge_global_counter.loadThenWrappingIncrement(ordering: .relaxed)
+    self.globalID = _edge_global_lock.withLock { value -> UInt64 in
+      let current = value
+      value &+= 1
+      return current
+    }
     self.middleware = middleware
     self.comparerForNonEquatable = comparer
 
